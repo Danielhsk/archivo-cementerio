@@ -7,8 +7,10 @@ Uso:
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
+import urllib.request
 from pathlib import Path
 
 import duckdb
@@ -16,6 +18,11 @@ import duckdb
 ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = ROOT / "data" / "raw"
 DB_PATH = ROOT / "data" / "cementerio.duckdb"
+GITHUB_DB_URL = os.environ.get(
+    "ARCHIVO_DB_URL",
+    "https://media.githubusercontent.com/media/Danielhsk/archivo-cementerio/main/data/cementerio.duckdb",
+)
+MIN_DB_BYTES = 1_000_000
 CATALOG_PATH = Path(__file__).resolve().parent / "catalogos.json"
 
 # Cada reporte se reconoce por un conjunto de encabezados obligatorios.
@@ -83,9 +90,56 @@ TYPED = {
 }
 
 
-def connect(read_only: bool = False) -> duckdb.DuckDBPyConnection:
+def cloud_runtime() -> bool:
+    """Streamlit Community Cloud monta el repo en /mount/src."""
+    return Path("/mount/src").exists() or os.environ.get("STREAMLIT_RUNTIME_ENV") == "cloud"
+
+
+def db_usable(path: Path = DB_PATH) -> bool:
+    if not path.is_file():
+        return False
+    if path.stat().st_size < MIN_DB_BYTES:
+        return False
+    with path.open("rb") as fh:
+        return not fh.read(48).startswith(b"version https://git-lfs.github.com/spec/v1")
+
+
+def fetch_db_from_github(url: str = GITHUB_DB_URL, dest: Path = DB_PATH) -> None:
+    """Descarga la base real cuando el clone solo trajo el puntero Git LFS."""
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dest.with_suffix(".duckdb.download")
+    if tmp.exists():
+        tmp.unlink()
+    req = urllib.request.Request(url, headers={"User-Agent": "archivo-cementerio-dashboard/1.0"})
+    with urllib.request.urlopen(req, timeout=900) as resp, tmp.open("wb") as out:
+        while True:
+            chunk = resp.read(8 * 1024 * 1024)
+            if not chunk:
+                break
+            out.write(chunk)
+    if not db_usable(tmp):
+        tmp.unlink(missing_ok=True)
+        raise RuntimeError("La descarga de la base DuckDB no produjo un archivo válido.")
+    if dest.exists():
+        dest.unlink()
+    tmp.replace(dest)
+
+
+def ensure_db_file() -> None:
+    if db_usable():
+        return
+    if DB_PATH.is_file():
+        DB_PATH.unlink()
+    fetch_db_from_github()
+
+
+def connect(read_only: bool | None = None) -> duckdb.DuckDBPyConnection:
+    if read_only is None:
+        read_only = cloud_runtime()
+    ensure_db_file()
     con = duckdb.connect(str(DB_PATH), read_only=read_only)
-    con.execute("INSTALL excel; LOAD excel;")
+    if not read_only:
+        con.execute("INSTALL excel; LOAD excel;")
     return con
 
 
