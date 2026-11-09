@@ -122,7 +122,10 @@ def repo_db_writable() -> bool:
 
 
 def runtime_db_path() -> Path:
-    if db_usable(DB_PATH) and repo_db_writable():
+    # En el clone de Streamlit (/mount/...) nunca abrir el .duckdb del repo directamente.
+    if str(ROOT).startswith("/mount/") or not repo_db_writable():
+        return writable_db_dest()
+    if db_usable(DB_PATH):
         return DB_PATH
     return writable_db_dest()
 
@@ -178,7 +181,7 @@ def connect(read_only: bool | None = None) -> duckdb.DuckDBPyConnection:
     ensure_db_file()
     path = runtime_db_path()
     if read_only is None:
-        read_only = path == DB_PATH and repo_db_writable()
+        read_only = path.resolve() == DB_PATH.resolve() and repo_db_writable()
     if not db_usable(path):
         raise RuntimeError(f"La base DuckDB no está disponible en {path}.")
     con = duckdb.connect(str(path), read_only=read_only)
