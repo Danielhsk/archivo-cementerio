@@ -20,6 +20,7 @@ import duckdb
 ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = ROOT / "data" / "raw"
 DB_PATH = ROOT / "data" / "cementerio.duckdb"
+DB_PARTS_DIR = ROOT / "data" / "cementerio_parts"
 DB_DOWNLOAD_URLS = [
     "https://github.com/Danielhsk/archivo-cementerio/releases/download/v1.0-data/cementerio.duckdb",
     "https://media.githubusercontent.com/media/Danielhsk/archivo-cementerio/main/data/cementerio.duckdb",
@@ -150,6 +151,27 @@ def db_usable(path: Path = DB_PATH) -> bool:
         return False
 
 
+def join_db_parts(dest: Path) -> bool:
+    """Reconstruye la base desde trozos versionados en git (sin LFS)."""
+    parts = sorted(DB_PARTS_DIR.glob("part*"))
+    if not parts:
+        return False
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dest.with_suffix(".duckdb.parts")
+    if tmp.exists():
+        tmp.unlink()
+    with tmp.open("wb") as out:
+        for part in parts:
+            out.write(part.read_bytes())
+    if not db_usable(tmp):
+        tmp.unlink(missing_ok=True)
+        return False
+    if dest.exists():
+        dest.unlink()
+    tmp.replace(dest)
+    return True
+
+
 def _download_db_url(url: str, tmp: Path) -> None:
     req = urllib.request.Request(url, headers={"User-Agent": "archivo-cementerio-dashboard/1.0"})
     with urllib.request.urlopen(req, timeout=900) as resp, tmp.open("wb") as out:
@@ -193,6 +215,8 @@ def ensure_db_file() -> None:
         return
     if dest.is_file():
         dest.unlink(missing_ok=True)
+    if join_db_parts(dest):
+        return
     repo_db = DB_PATH
     if db_usable(repo_db):
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -200,8 +224,6 @@ def ensure_db_file() -> None:
         if db_usable(dest):
             return
         dest.unlink(missing_ok=True)
-    if dest.is_file():
-        dest.unlink()
     fetch_db_from_github(dest=dest)
 
 

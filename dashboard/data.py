@@ -62,8 +62,9 @@ def connection() -> duckdb.DuckDBPyConnection:
             f"Repo: {repo} ({repo_size // 1024 // 1024} MB) · Activa: {dest} ({dest_size // 1024 // 1024} MB)."
         )
         raise exc
-    etl.prepare(con)
-    _refresh_views(con)
+    if not etl.uses_read_only_session():
+        etl.prepare(con)
+        _refresh_views(con)
     return con
 
 
