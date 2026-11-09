@@ -10,6 +10,7 @@ import json
 import os
 import shutil
 import sys
+import tempfile
 import time
 import urllib.request
 from pathlib import Path
@@ -92,19 +93,38 @@ TYPED = {
 
 
 def cloud_runtime() -> bool:
-    """Streamlit Community Cloud clona el repo bajo /mount/src/<repo>."""
+    """Indica si conviene tratar el entorno como despliegue remoto (p. ej. Streamlit Cloud)."""
     if os.environ.get("STREAMLIT_RUNTIME_ENV") == "cloud":
         return True
     if str(ROOT).startswith("/mount/"):
         return True
-    return Path("/mount/src").exists() or Path("/mount/app").exists()
+    return not repo_db_writable()
+
+
+def writable_db_dest() -> Path:
+    override = os.environ.get("ARCHIVO_DB_PATH")
+    if override:
+        return Path(override)
+    return Path(tempfile.gettempdir()) / "archivo_cementerio.duckdb"
+
+
+def repo_db_writable() -> bool:
+    """False en Streamlit Cloud: el clone de git no permite escribir en data/."""
+    if not DB_PATH.parent.is_dir():
+        return True
+    probe = DB_PATH.parent / ".write_probe"
+    try:
+        probe.write_text("ok", encoding="ascii")
+        probe.unlink(missing_ok=True)
+        return True
+    except OSError:
+        return False
 
 
 def runtime_db_path() -> Path:
-    """En Cloud el clone es solo lectura: la base activa vive en /tmp."""
-    if cloud_runtime():
-        return Path(os.environ.get("ARCHIVO_DB_PATH", "/tmp/archivo_cementerio.duckdb"))
-    return DB_PATH
+    if db_usable(DB_PATH) and repo_db_writable():
+        return DB_PATH
+    return writable_db_dest()
 
 
 def db_usable(path: Path = DB_PATH) -> bool:
@@ -155,11 +175,12 @@ def ensure_db_file() -> None:
 
 
 def connect(read_only: bool | None = None) -> duckdb.DuckDBPyConnection:
-    if read_only is None:
-        # En Cloud la base vive en /tmp y prepare() recrea macros y vistas (escritura).
-        read_only = not cloud_runtime()
     ensure_db_file()
     path = runtime_db_path()
+    if read_only is None:
+        read_only = path == DB_PATH and repo_db_writable()
+    if not db_usable(path):
+        raise RuntimeError(f"La base DuckDB no está disponible en {path}.")
     con = duckdb.connect(str(path), read_only=read_only)
     if not read_only:
         con.execute("INSTALL excel; LOAD excel;")

@@ -30,10 +30,10 @@ nav = st.navigation({
     ],
 })
 
+nav.run()
+
 m = data.meta()
 total = sum(d.get("filas", 0) or 0 for d in m["datasets"] if d["cargado"])
 st.sidebar.markdown(
     f'<div class="side-foot"><b>Fuente de datos</b><span>{len(m["cargados"])} de {len(m["datasets"])} reportes · '
     f'{ui.n(total)} filas<br>DuckDB analítica</span></div>', unsafe_allow_html=True)
-
-nav.run()
