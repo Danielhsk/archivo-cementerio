@@ -92,8 +92,12 @@ TYPED = {
 
 
 def cloud_runtime() -> bool:
-    """Streamlit Community Cloud monta el repo en /mount/src."""
-    return Path("/mount/src").exists() or os.environ.get("STREAMLIT_RUNTIME_ENV") == "cloud"
+    """Streamlit Community Cloud clona el repo bajo /mount/src/<repo>."""
+    if os.environ.get("STREAMLIT_RUNTIME_ENV") == "cloud":
+        return True
+    if str(ROOT).startswith("/mount/"):
+        return True
+    return Path("/mount/src").exists() or Path("/mount/app").exists()
 
 
 def runtime_db_path() -> Path:
@@ -152,7 +156,8 @@ def ensure_db_file() -> None:
 
 def connect(read_only: bool | None = None) -> duckdb.DuckDBPyConnection:
     if read_only is None:
-        read_only = cloud_runtime()
+        # En Cloud la base vive en /tmp y prepare() recrea macros y vistas (escritura).
+        read_only = not cloud_runtime()
     ensure_db_file()
     path = runtime_db_path()
     con = duckdb.connect(str(path), read_only=read_only)
