@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="44" viewBox="0 0 220 44" fill="none">
+  <g stroke="#c4a46a" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 40V20a14 14 0 0 1 28 0v20"/>
+    <path d="M11 40V21a7 7 0 0 1 14 0v19"/>
+  </g>
+  <text x="44" y="22" font-family="Newsreader, Georgia, serif" font-size="21" fill="#f1efe9">Archivo</text>
+  <text x="45" y="37" font-family="Consolas, monospace" font-size="8.5" letter-spacing="2" fill="#7f8a83">CEMENTERIO &#183; FUNERARIA</text>
+</svg>

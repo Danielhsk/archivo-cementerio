@@ -1,4 +1,4 @@
 duckdb>=1.2
-fastapi>=0.110
-uvicorn>=0.29
-python-multipart>=0.0.9
+streamlit>=1.46
+plotly>=5.20
+pandas>=2.0

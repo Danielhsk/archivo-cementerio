@@ -156,7 +156,7 @@ def load_file(con: duckdb.DuckDBPyConnection, path: Path) -> tuple[str | None, i
         "INSERT OR REPLACE INTO _meta VALUES (?, ?, ?, now(), ?)",
         [key, path.name, n, round(time.time() - t, 1)],
     )
-    print(f"  ✓ {path.name} -> {key}: {n:,} filas ({time.time() - t:.1f}s)")
+    print(f"  OK {path.name} -> {key}: {n:,} filas ({time.time() - t:.1f}s)")
     return key, n
 
 
