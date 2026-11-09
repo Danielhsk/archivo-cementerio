@@ -6,6 +6,7 @@ Uso:
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -26,6 +27,8 @@ DB_DOWNLOAD_URLS = [
     "https://media.githubusercontent.com/media/Danielhsk/archivo-cementerio/main/data/cementerio.duckdb",
 ]
 MIN_DB_BYTES = 1_000_000
+DB_SHA256 = "6bc56bd703ec4847f86419b3acf25691f26f4ca10f943ce7dd111bfd74e058e8"
+DB_BYTES = 118_763_520
 CATALOG_PATH = Path(__file__).resolve().parent / "catalogos.json"
 
 # Cada reporte se reconoce por un conjunto de encabezados obligatorios.
@@ -131,10 +134,19 @@ def runtime_db_path() -> Path:
     return writable_db_dest()
 
 
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(8 * 1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def db_usable(path: Path = DB_PATH) -> bool:
     if not path.is_file():
         return False
-    if path.stat().st_size < MIN_DB_BYTES:
+    size = path.stat().st_size
+    if size < MIN_DB_BYTES:
         return False
     with path.open("rb") as fh:
         head = fh.read(64)
@@ -142,13 +154,9 @@ def db_usable(path: Path = DB_PATH) -> bool:
         return False
     if b"DUCK" not in head[:32]:
         return False
-    try:
-        con = duckdb.connect(str(path), read_only=True)
-        con.execute("SELECT 1").fetchone()
-        con.close()
-        return True
-    except duckdb.Error:
-        return False
+    if size == DB_BYTES:
+        return file_sha256(path) == DB_SHA256
+    return True
 
 
 def join_db_parts(dest: Path) -> bool:
@@ -215,8 +223,13 @@ def ensure_db_file() -> None:
         return
     if dest.is_file():
         dest.unlink(missing_ok=True)
-    if join_db_parts(dest):
+    parts = sorted(DB_PARTS_DIR.glob("part*"))
+    if parts and join_db_parts(dest):
         return
+    if parts:
+        raise RuntimeError(
+            f"No se pudo ensamblar la base desde {len(parts)} trozos en {DB_PARTS_DIR}."
+        )
     repo_db = DB_PATH
     if db_usable(repo_db):
         dest.parent.mkdir(parents=True, exist_ok=True)
