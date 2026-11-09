@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Archivo · Cementerio y funeraria</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="#/resumen">
+      <svg class="brand-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <path d="M6 29V14a10 10 0 0 1 20 0v15" />
+        <path d="M11 29V15a5 5 0 0 1 10 0v14" />
+      </svg>
+      <span>
+        <span class="brand-name">Archivo</span>
+        <span class="brand-sub">Cementerio · Funeraria</span>
+      </span>
+    </a>
+
+    <nav>
+      <a href="#/resumen" data-route="resumen"><i data-icon="grid"></i>Resumen</a>
+      <a href="#/archivos" data-route="archivos"><i data-icon="upload"></i>Archivos</a>
+      <p class="nav-label">Tablas</p>
+      <a href="#/tabla/exhumaciones" data-route="tabla/exhumaciones"><i data-icon="layers"></i>Exhumaciones</a>
+      <a href="#/tabla/cremaciones" data-route="tabla/cremaciones"><i data-icon="flame"></i>Cremaciones</a>
+      <a href="#/tabla/facturas" data-route="tabla/facturas"><i data-icon="file"></i>Facturas</a>
+      <a href="#/tabla/funerarias" data-route="tabla/funerarias"><i data-icon="users"></i>Funerarias</a>
+      <p class="nav-label">Análisis</p>
+      <a href="#/estadisticas" data-route="estadisticas"><i data-icon="chart"></i>Estadísticas</a>
+      <a href="#/comparaciones" data-route="comparaciones"><i data-icon="compare"></i>Comparaciones</a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <strong>Fuente de datos</strong>
+      <span id="foot-status">Conectando…</span>
+    </div>
+  </aside>
+
+  <main id="view"></main>
+
+  <script src="vendor/chart.umd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

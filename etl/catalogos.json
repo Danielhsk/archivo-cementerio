@@ -1,0 +1,37 @@
+{
+  "_nota": "Etiquetas para los códigos de los reportes. Reemplaza los valores por los nombres reales y vuelve a ejecutar etl/build_db.py.",
+  "cementerio": {
+    "01": "Cementerio 01",
+    "02": "Cementerio 02",
+    "03": "Cementerio 03",
+    "04": "Cementerio 04"
+  },
+  "forma_pago": {
+    "1": "Forma de pago 1",
+    "2": "Forma de pago 2",
+    "3": "Forma de pago 3",
+    "4": "Forma de pago 4",
+    "5": "Forma de pago 5",
+    "6": "Forma de pago 6",
+    "7": "Forma de pago 7"
+  },
+  "tipo_crema": {
+    "1": "Tipo 1",
+    "2": "Tipo 2"
+  },
+  "tipo_usuar": {
+    "1": "Usuario tipo 1",
+    "2": "Usuario tipo 2"
+  },
+  "causa_muer": {
+    "0": "Causa 0",
+    "1": "Causa 1",
+    "2": "Causa 2",
+    "3": "Causa 3",
+    "4": "Causa 4"
+  },
+  "sexo": {
+    "M": "Masculino",
+    "F": "Femenino"
+  }
+}
