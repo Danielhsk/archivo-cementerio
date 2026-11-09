@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import sys
 import time
 import urllib.request
@@ -95,13 +96,23 @@ def cloud_runtime() -> bool:
     return Path("/mount/src").exists() or os.environ.get("STREAMLIT_RUNTIME_ENV") == "cloud"
 
 
+def runtime_db_path() -> Path:
+    """En Cloud el clone es solo lectura: la base activa vive en /tmp."""
+    if cloud_runtime():
+        return Path(os.environ.get("ARCHIVO_DB_PATH", "/tmp/archivo_cementerio.duckdb"))
+    return DB_PATH
+
+
 def db_usable(path: Path = DB_PATH) -> bool:
     if not path.is_file():
         return False
     if path.stat().st_size < MIN_DB_BYTES:
         return False
     with path.open("rb") as fh:
-        return not fh.read(48).startswith(b"version https://git-lfs.github.com/spec/v1")
+        head = fh.read(64)
+    if head.startswith(b"version https://git-lfs.github.com/spec/v1"):
+        return False
+    return b"DUCK" in head[:32]
 
 
 def fetch_db_from_github(url: str = GITHUB_DB_URL, dest: Path = DB_PATH) -> None:
@@ -126,18 +137,25 @@ def fetch_db_from_github(url: str = GITHUB_DB_URL, dest: Path = DB_PATH) -> None
 
 
 def ensure_db_file() -> None:
-    if db_usable():
+    dest = runtime_db_path()
+    if db_usable(dest):
         return
-    if DB_PATH.is_file():
-        DB_PATH.unlink()
-    fetch_db_from_github()
+    repo_db = DB_PATH
+    if db_usable(repo_db):
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(repo_db, dest)
+        return
+    if dest.is_file():
+        dest.unlink()
+    fetch_db_from_github(dest=dest)
 
 
 def connect(read_only: bool | None = None) -> duckdb.DuckDBPyConnection:
     if read_only is None:
         read_only = cloud_runtime()
     ensure_db_file()
-    con = duckdb.connect(str(DB_PATH), read_only=read_only)
+    path = runtime_db_path()
+    con = duckdb.connect(str(path), read_only=read_only)
     if not read_only:
         con.execute("INSTALL excel; LOAD excel;")
     return con

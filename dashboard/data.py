@@ -46,8 +46,8 @@ def _refresh_views(cur) -> None:
 
 @st.cache_resource
 def connection() -> duckdb.DuckDBPyConnection:
-    if not etl.db_usable():
-        with st.spinner("Descargando base de datos (~113 MB). Puede tardar uno o dos minutos la primera vez…"):
+    if not etl.db_usable(etl.runtime_db_path()):
+        with st.spinner("Preparando base de datos (~113 MB). Puede tardar uno o dos minutos la primera vez…"):
             etl.ensure_db_file()
     etl.DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     con = etl.connect()
