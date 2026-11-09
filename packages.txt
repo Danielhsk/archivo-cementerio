@@ -1,0 +1,1 @@
+# Sin dependencias del sistema; DuckDB se instala desde el wheel de pip.
