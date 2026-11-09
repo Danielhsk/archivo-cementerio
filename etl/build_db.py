@@ -20,10 +20,10 @@ import duckdb
 ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = ROOT / "data" / "raw"
 DB_PATH = ROOT / "data" / "cementerio.duckdb"
-GITHUB_DB_URL = os.environ.get(
-    "ARCHIVO_DB_URL",
+DB_DOWNLOAD_URLS = [
+    "https://github.com/Danielhsk/archivo-cementerio/releases/download/v1.0-data/cementerio.duckdb",
     "https://media.githubusercontent.com/media/Danielhsk/archivo-cementerio/main/data/cementerio.duckdb",
-)
+]
 MIN_DB_BYTES = 1_000_000
 CATALOG_PATH = Path(__file__).resolve().parent / "catalogos.json"
 
@@ -150,12 +150,7 @@ def db_usable(path: Path = DB_PATH) -> bool:
         return False
 
 
-def fetch_db_from_github(url: str = GITHUB_DB_URL, dest: Path = DB_PATH) -> None:
-    """Descarga la base real cuando el clone solo trajo el puntero Git LFS."""
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    tmp = dest.with_suffix(".duckdb.download")
-    if tmp.exists():
-        tmp.unlink()
+def _download_db_url(url: str, tmp: Path) -> None:
     req = urllib.request.Request(url, headers={"User-Agent": "archivo-cementerio-dashboard/1.0"})
     with urllib.request.urlopen(req, timeout=900) as resp, tmp.open("wb") as out:
         while True:
@@ -163,12 +158,33 @@ def fetch_db_from_github(url: str = GITHUB_DB_URL, dest: Path = DB_PATH) -> None
             if not chunk:
                 break
             out.write(chunk)
-    if not db_usable(tmp):
+
+
+def fetch_db_from_github(dest: Path = DB_PATH) -> None:
+    """Descarga la base real cuando el clone solo trajo el puntero Git LFS."""
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dest.with_suffix(".duckdb.download")
+    override = os.environ.get("ARCHIVO_DB_URL")
+    urls = ([override] if override else []) + DB_DOWNLOAD_URLS
+    errors: list[str] = []
+    for url in urls:
+        if tmp.exists():
+            tmp.unlink()
+        try:
+            _download_db_url(url, tmp)
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"{url}: {exc}")
+            continue
+        if db_usable(tmp):
+            if dest.exists():
+                dest.unlink()
+            tmp.replace(dest)
+            return
+        errors.append(f"{url}: archivo descargado no es una base DuckDB válida")
         tmp.unlink(missing_ok=True)
-        raise RuntimeError("La descarga de la base DuckDB no produjo un archivo válido.")
-    if dest.exists():
-        dest.unlink()
-    tmp.replace(dest)
+    raise RuntimeError(
+        "No se pudo descargar la base DuckDB. " + (" | ".join(errors) if errors else "sin URLs")
+    )
 
 
 def ensure_db_file() -> None:
@@ -187,6 +203,11 @@ def ensure_db_file() -> None:
     if dest.is_file():
         dest.unlink()
     fetch_db_from_github(dest=dest)
+
+
+def uses_read_only_session() -> bool:
+    path = runtime_db_path()
+    return path.resolve() == DB_PATH.resolve() and repo_db_writable()
 
 
 def connect(read_only: bool | None = None) -> duckdb.DuckDBPyConnection:
