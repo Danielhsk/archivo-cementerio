@@ -50,7 +50,18 @@ def connection() -> duckdb.DuckDBPyConnection:
         with st.spinner("Preparando base de datos (~113 MB). Puede tardar uno o dos minutos la primera vez…"):
             etl.ensure_db_file()
     etl.DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    con = etl.connect()
+    try:
+        con = etl.connect()
+    except Exception as exc:  # noqa: BLE001
+        dest = etl.runtime_db_path()
+        repo = etl.DB_PATH
+        repo_size = repo.stat().st_size if repo.is_file() else 0
+        dest_size = dest.stat().st_size if dest.is_file() else 0
+        st.error(
+            "No se pudo abrir la base DuckDB. "
+            f"Repo: {repo} ({repo_size // 1024 // 1024} MB) · Activa: {dest} ({dest_size // 1024 // 1024} MB)."
+        )
+        raise exc
     etl.prepare(con)
     _refresh_views(con)
     return con

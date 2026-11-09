@@ -139,7 +139,15 @@ def db_usable(path: Path = DB_PATH) -> bool:
         head = fh.read(64)
     if head.startswith(b"version https://git-lfs.github.com/spec/v1"):
         return False
-    return b"DUCK" in head[:32]
+    if b"DUCK" not in head[:32]:
+        return False
+    try:
+        con = duckdb.connect(str(path), read_only=True)
+        con.execute("SELECT 1").fetchone()
+        con.close()
+        return True
+    except duckdb.Error:
+        return False
 
 
 def fetch_db_from_github(url: str = GITHUB_DB_URL, dest: Path = DB_PATH) -> None:
@@ -167,11 +175,15 @@ def ensure_db_file() -> None:
     dest = runtime_db_path()
     if db_usable(dest):
         return
+    if dest.is_file():
+        dest.unlink(missing_ok=True)
     repo_db = DB_PATH
     if db_usable(repo_db):
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(repo_db, dest)
-        return
+        if db_usable(dest):
+            return
+        dest.unlink(missing_ok=True)
     if dest.is_file():
         dest.unlink()
     fetch_db_from_github(dest=dest)
