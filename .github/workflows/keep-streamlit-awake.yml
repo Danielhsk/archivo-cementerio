@@ -1,0 +1,34 @@
+# Mantiene despierta la app en Streamlit Cloud (sueño tras ~12 h sin tráfico).
+# Código del probe en .github/keep-alive (revisado; no usa acciones de terceros).
+
+name: Keep Streamlit app awake
+
+on:
+  schedule:
+    - cron: '0 */8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Puppeteer probe
+        working-directory: .github/keep-alive
+        run: |
+          npm install --omit=dev
+          npx puppeteer browsers install chrome
+
+      - name: Visit lectiva Streamlit app
+        working-directory: .github/keep-alive
+        run: |
+          node probe.js "https://lectiva-archivo-cementerio.streamlit.app/" 120

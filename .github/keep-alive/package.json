@@ -1,0 +1,8 @@
+{
+  "name": "lectiva-streamlit-keep-alive",
+  "private": true,
+  "description": "Scheduled wake-up for lectiva-archivo-cementerio.streamlit.app",
+  "dependencies": {
+    "puppeteer": "^22.0.0"
+  }
+}
